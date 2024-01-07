@@ -26,7 +26,7 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    email: str | None = None
+    identifier: str | None = None
 
 
 class CreateUser(BaseModel):

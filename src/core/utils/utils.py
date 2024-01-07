@@ -4,10 +4,14 @@ import random
 TData = TypeVar("TData", dict | list[dict], None)
 
 def buildResponse(message: str, data: TData = None):
-    return {
+    obj = {
         "message": message,
-        "data": data
     }
+    if data:
+        obj.update({ "data": data })
+    return obj
+
+
 
 def generateRandomNum(length: int | None = None):
     string = ""

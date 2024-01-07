@@ -11,11 +11,10 @@ from sqlalchemy import select
 from database import model
 from ..errors import errors
 from datetime import datetime, timedelta
-
-#
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-# from database.db import asyncSession
+from database.db import getDb
+
+
 
 
 
@@ -29,52 +28,41 @@ def verifyPassword(password, hashedPassword):
 def hashPassword(password):
     return pwd_context.hash(password)
 
-def createAccessToken(data: dict, expiresDelta: timedelta):
+def createAccessToken(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + expiresDelta
-    to_encode.update({"exp": expire})
+    tokenExpire = timedelta(minutes=config.jwtTokenExpire)
+    to_encode.update({"exp": tokenExpire})
     encoded_jwt = jwt.encode(to_encode, key=config.jwtSecret)
     return encoded_jwt
 
 
-def getUser(db: list[dict], email: str):
-    user_dict = next(filter(lambda user: user["email"] == email, db), None)
-    if user_dict:
-        return schema.User(**user_dict)
-    
-
-
-def authenticateUser(fake_db, email: str, password: str):
-    user = getUser(fake_db, email)
-    print(user, email, password)
-    if not user:
-        return False
-    if not verifyPassword(password, user.hashedPassword):
-        return False
-    return user
-
-
-
-
-
-async def getLoggedInUser(credentials: HTTPAuthorizationCredentials = Depends(bearerScheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+async def authGuard(authCred: HTTPAuthorizationCredentials = Depends(bearerScheme), session: AsyncSession = Depends(getDb)):
     try:
-        payload = jwt.decode(credentials.credentials, config.jwtSecret)
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-        token_data = schema.TokenData(email=email)
+        payload = jwt.decode(authCred.credentials, config.jwtSecret)
+        identifier: str = payload.get("sub")
+        if identifier is None:
+            raise errors.GenericAuthException(
+                 status_code=status.HTTP_401_UNAUTHORIZED,
+                 detail="Your session is unauthorized",
+            )
+        tokenData = schema.TokenData(identifier=identifier)
+        stmt = select(model.User).where(model.User.identifier == tokenData.identifier)
+        result = await session.execute(stmt)
+        user = result.scalars().first()
+        if not user:
+            raise errors.UserNotFoundException(
+                 status_code=status.HTTP_401_UNAUTHORIZED,
+                 detail="Your session is unauthorized",
+            )
+        return user
+        
     except JWTError:
-        raise credentials_exception
-    user = {} # getUser(fake_users_db, email=token_data.email)
-    if user is None:
-         raise credentials_exception
-    return user
+        raise errors.InvalidAuthTokenException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your session is unauthorized",
+        )
+        
+ 
 
 async def verifyEmail(options: schema.VerifyEmailSchema, session: AsyncSession):
     stmt = select(model.User).where(model.User.email == options.email)
@@ -104,17 +92,19 @@ async def verifyEmail(options: schema.VerifyEmailSchema, session: AsyncSession):
     
         
 
-async def login(options: schema.LoginSchema):
-    user = {}  # authenticateUser(fake_users_db, options.email, options.password)
+async def login(options: schema.LoginSchema, session: AsyncSession):
+    stmt = select(model.User).where(model.User.email == options.email)
+    result = await session.execute(stmt)
+    user = result.scalars().first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
         )
-    tokenExpire = timedelta(minutes=config.jwtTokenExpire)
+   
+    tokenEncodeData = {"sub": user.identifier }
     accessToken = createAccessToken(
-        data={"sub": user.email}, expiresDelta=tokenExpire
+        data=tokenEncodeData
     )
 
     return utils.buildResponse(
@@ -130,7 +120,7 @@ async def signup(options: schema.SignupSchema, session: AsyncSession):
     result = await session.execute(stmt)
     user = result.scalars().first()
     if user:
-        raise errors.DuplicateUserException(detail="Account already exists. Kindly login",  status_code=status.HTTP_400_BAD_REQUEST)
+        raise errors.DuplicateUserException(detail="Account already exists. Kindly login", status_code=status.HTTP_400_BAD_REQUEST)
     getCodeStmt = select(model.AccountVerificationRequest).where(model.AccountVerificationRequest.code == options.code, model.AccountVerificationRequest.email == email)
     result = await session.execute(getCodeStmt)
     verifyDataObj = result.scalars().first()
@@ -157,7 +147,17 @@ async def signup(options: schema.SignupSchema, session: AsyncSession):
         await session.delete(verifyDataObj)
         await session.commit()
         await session.refresh(data)
-        return data
+        tokenEncodeData = {"sub": data.identifier }
+        accessToken = createAccessToken(
+            data=tokenEncodeData
+        )
+        
+        return utils.buildResponse(
+            message="signup successful", 
+            data={
+            "accessToken": accessToken,
+            "tokenType": "bearer"    
+        })
     except:
         await session.rollback()
         raise errors.AccountCreationException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Failed to create user account")
