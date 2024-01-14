@@ -3,6 +3,7 @@ from modules.auth.schema import schema
 from modules.auth.services import auth as authService
 from database.db import getDb
 from sqlalchemy.ext.asyncio import AsyncSession
+from ..docs import docs
 
 
 #docs
@@ -14,23 +15,14 @@ dbSession = Depends(getDb)
 router = APIRouter(prefix="/auth")
 
 
-@router.post("/signup", tags=[authTag])
+@router.post("/signup", tags=[authTag], response_model=schema.SignupResponseSchema, responses=docs.signupResponses)
 async def signup(schema: schema.SignupSchema, session: AsyncSession = dbSession):
     return await authService.signup(schema, session)
 
-@router.post("/login", tags=[authTag])
+@router.post("/login", tags=[authTag],  response_model=schema.LoginResponseSchema,  responses=docs.loginResponses)
 async def login(schema: schema.LoginSchema, session: AsyncSession = dbSession):
     return await authService.login(schema, session)
 
-@router.post("/verify-email", tags=[authTag])
-async def verifyEmail(schema: schema.VerifyEmailSchema, session: AsyncSession = dbSession):
+@router.post("/verify-email", tags=[authTag],  response_model=schema.ResponseBaseSchema,  responses=docs.verifyEmailResponses)
+async def verify_email(schema: schema.VerifyEmailSchema, session: AsyncSession = dbSession):
     return await authService.verifyEmail(schema, session)
-
-# @router.get("/users/me", response_model=schema.User)
-# async def read_users_me(current_user: schema.User = Depends(authService.getCurrentUser)):
-#     return current_user
-
-
-# @router.get("/users/me", response_model=schema.User)
-# async def read_users_me(current_user: schema.User = Depends(authService.getLoggedInUser)):
-#     return current_user

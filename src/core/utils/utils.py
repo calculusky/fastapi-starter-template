@@ -5,6 +5,7 @@ TData = TypeVar("TData", dict | list[dict], None)
 
 def buildResponse(message: str, data: TData = None):
     obj = {
+        "success": True,
         "message": message,
     }
     if data:

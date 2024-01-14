@@ -34,4 +34,4 @@ def httpExceptionHandler(app: FastAPI):
           if config.isDevEnvironment:
             jsonObj.update({ "stack": traceback.format_exception(exc) })
             
-          return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=jsonable_encoder(jsonObj))
+          return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=jsonObj)

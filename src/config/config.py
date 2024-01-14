@@ -11,4 +11,4 @@ databaseUrl = os.environ.get("DATABASE_URL")
 
 isDevEnvironment = bool(os.getenv("DEV_ENVIRONMENT"))
 
-print(isDevEnvironment)
+allowedDomains = os.getenv("ALLOWED_DOMAINS").split(",") if os.getenv("ALLOWED_DOMAINS") else ["*"]

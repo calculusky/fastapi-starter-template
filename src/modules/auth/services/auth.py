@@ -10,6 +10,7 @@ import shortuuid
 from sqlalchemy import select
 from database import model
 from ..errors import errors
+from modules.user.errors.errors import UserNotFoundException, DuplicateUserException 
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.db import getDb
@@ -30,7 +31,7 @@ def hashPassword(password):
 
 def createAccessToken(data: dict):
     to_encode = data.copy()
-    tokenExpire = timedelta(minutes=config.jwtTokenExpire)
+    tokenExpire = datetime.utcnow() + timedelta(minutes=config.jwtTokenExpire)
     to_encode.update({"exp": tokenExpire})
     encoded_jwt = jwt.encode(to_encode, key=config.jwtSecret)
     return encoded_jwt
@@ -50,7 +51,7 @@ async def authGuard(authCred: HTTPAuthorizationCredentials = Depends(bearerSchem
         result = await session.execute(stmt)
         user = result.scalars().first()
         if not user:
-            raise errors.UserNotFoundException(
+            raise UserNotFoundException(
                  status_code=status.HTTP_401_UNAUTHORIZED,
                  detail="Your session is unauthorized",
             )
@@ -69,7 +70,7 @@ async def verifyEmail(options: schema.VerifyEmailSchema, session: AsyncSession):
     result = await session.execute(stmt)
     user = result.scalars().first()
     if user:
-        raise errors.DuplicateUserException(detail="Account already exists",  status_code=status.HTTP_400_BAD_REQUEST)
+        raise DuplicateUserException(detail="Account already exists",  status_code=status.HTTP_400_BAD_REQUEST)
     #TODO: send emails here
     
     email = options.email.lower()
@@ -120,7 +121,7 @@ async def signup(options: schema.SignupSchema, session: AsyncSession):
     result = await session.execute(stmt)
     user = result.scalars().first()
     if user:
-        raise errors.DuplicateUserException(detail="Account already exists. Kindly login", status_code=status.HTTP_400_BAD_REQUEST)
+        raise DuplicateUserException(detail="Account already exists. Kindly login", status_code=status.HTTP_400_BAD_REQUEST)
     getCodeStmt = select(model.AccountVerificationRequest).where(model.AccountVerificationRequest.code == options.code, model.AccountVerificationRequest.email == email)
     result = await session.execute(getCodeStmt)
     verifyDataObj = result.scalars().first()
