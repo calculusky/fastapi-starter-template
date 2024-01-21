@@ -1,6 +1,5 @@
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi import FastAPI, Request, status
-from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 import traceback
@@ -21,7 +20,7 @@ def httpExceptionHandler(app: FastAPI):
         return JSONResponse(
             status_code=exc.status_code or 500,
             
-            content=jsonable_encoder(jsonObj),
+            content=jsonObj,
         )
         
     @app.exception_handler(RequestValidationError)

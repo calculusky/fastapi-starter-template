@@ -11,7 +11,6 @@ from core.exception.http.httpException import httpExceptionHandler
 
 
 def initApp(app: FastAPI, whiteListedDomains: list[str]):
-    
     app.add_middleware(
         CORSMiddleware, 
         allow_origins=whiteListedDomains, 
@@ -24,6 +23,5 @@ def initApp(app: FastAPI, whiteListedDomains: list[str]):
     app.include_router(user.router)
 
     httpExceptionHandler(app)
-    
-    
+        
     return app

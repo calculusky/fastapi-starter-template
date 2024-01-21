@@ -9,16 +9,10 @@ from core.utils import utils
 
 
 async def getUserDetails(id: int, session: AsyncSession):
-    stmt = select(
-        model.User.id, 
-        model.User.identifier, 
-        model.User.firstName,
-        model.User.lastName, 
-        model.User.email
-        ).where(model.User.id == id)
-    result = await session.execute(stmt)
-    user = result.scalars()
-    print(user)
+    stmt = select(model.User).where(model.User.id == id)
+    result = await session.scalars(stmt)
+    user = result.first()
+    
     if not user:
         raise errors.UserNotFoundException(detail="user account not found", status_code=status.HTTP_404_NOT_FOUND)
     

@@ -5,7 +5,8 @@ from modules.auth.schema import schema
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from core.utils import utils
-from config import config, constant
+from config import constant
+from config.config import settings
 import shortuuid
 from sqlalchemy import select
 from database import model
@@ -31,15 +32,15 @@ def hashPassword(password):
 
 def createAccessToken(data: dict):
     to_encode = data.copy()
-    tokenExpire = datetime.utcnow() + timedelta(minutes=config.jwtTokenExpire)
+    tokenExpire = datetime.utcnow() + timedelta(minutes=settings.jwt_token_expire)
     to_encode.update({"exp": tokenExpire})
-    encoded_jwt = jwt.encode(to_encode, key=config.jwtSecret)
+    encoded_jwt = jwt.encode(to_encode, key=settings.jwt_secret)
     return encoded_jwt
 
 
 async def authGuard(authCred: HTTPAuthorizationCredentials = Depends(bearerScheme), session: AsyncSession = Depends(getDb)):
     try:
-        payload = jwt.decode(authCred.credentials, config.jwtSecret)
+        payload = jwt.decode(authCred.credentials, settings.jwt_secret)
         identifier: str = payload.get("sub")
         if identifier is None:
             raise errors.GenericAuthException(

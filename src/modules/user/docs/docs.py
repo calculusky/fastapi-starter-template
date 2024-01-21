@@ -9,7 +9,11 @@ userDetailsResponses = {
                      **docs.baseResponseExample,
                       "message": "account successfully retrieved",
                     "data": {
-                        "firstName": "john",
+                        "id": 1,
+                        "identifier": "4tu333wqypYRydX",
+                        "firstName": "John",
+                        "lastName": "Doe",
+                        "email": "johndoe@example.com"
                     }
                  }
              }

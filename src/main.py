@@ -2,7 +2,8 @@ from src.www.app import initApp
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from database import db
-from config.config import allowedDomains
+from config.config import settings
+
 
 
 @asynccontextmanager
@@ -12,7 +13,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 def bootstrap():
-    initApp(app, whiteListedDomains=allowedDomains)
+    initApp(app, whiteListedDomains=settings.allowed_domains)
 
 bootstrap()
 

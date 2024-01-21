@@ -1,4 +1,10 @@
 
+tag = {
+  "user": "User",
+  "auth": "Auth"
+}
+
+
 
 baseResponseExample = {
     "success": True
